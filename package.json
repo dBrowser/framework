@@ -1,6 +1,6 @@
 {
   "name": "@dbrowser/framework",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "dBrowser's Official Framework Libraries",
   "contributors": [
     "Jared Rice Sr. <jared@dwebs.io>",
@@ -14,13 +14,13 @@
   },
   "dependencies": {
     "@dbrowser/errors": "*",
-    "@dbrowser/vfs-wrapper": "dbrowser/vfs-wrapper#master",
+    "@dbrowser/vfswrapper": "*",
     "@ddatabase/protocol": "ddatabase/protocol#master",
     "@ddrive/core": "ddrives/core#master",
     "@ddrive/zip": "ddrives/zip#master",
     "@dpack/api": "dpacks/api#master",
-    "@dwcore/dws2": "dwcore/dws2#master",
     "@dwcore/dws-chain": "dwcore/dws-chain#master",
+    "@dwcore/dws2": "dwcore/dws2#master",
     "@dwebs/codec": "distributedweb/codec#master",
     "@dwebs/dns": "distributedweb/dns#master",
     "@dwebs/parse": "distributedweb/parse#master",
