@@ -66,7 +66,7 @@ migrations = [
   migration('profile-data.v13.sql'),
   migration('profile-data.v14.sql'),
   migration('profile-data.v15.sql'),
-  migration('profile-data.v16.sql', {canFail: true}), 
+  migration('profile-data.v16.sql', {canFail: true}),
   migration('profile-data.v17.sql'),
   migration('profile-data.v18.sql')
 ]

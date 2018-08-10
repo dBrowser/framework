@@ -17,10 +17,10 @@ const historyAPI = require('./bg/history')
 const sitedataAPI = require('../ddbs/sitedata').WEBAPI
 
 // external manifests
-const dpackVaultManifest = require('./manifests/external/dpack-vault')
+const dwebVaultManifest = require('./manifests/external/dweb-vault')
 
 // external apis
-const dpackVaultAPI = require('./bg/dpack-vault')
+const dwebVaultAPI = require('./bg/dweb-vault')
 
 // experimental manifests
 const experimentalRepositoryManifest = require('./manifests/external/experimental/repository')
@@ -43,7 +43,7 @@ exports.setup = function () {
   globals.rpcAPI.exportAPI('dbrowser', dBrowserManifest, globals.browserWebAPI, internalOnly)
 
   // external apis
-  globals.rpcAPI.exportAPI('dpack-vault', dpackVaultManifest, dpackVaultAPI, secureOnly)
+  globals.rpcAPI.exportAPI('dweb-vault', dwebVaultManifest, dwebVaultAPI, secureOnly)
 
   // experimental apis
   globals.rpcAPI.exportAPI('experimental-repository', experimentalRepositoryManifest, experimentalRepositoryAPI, secureOnly)

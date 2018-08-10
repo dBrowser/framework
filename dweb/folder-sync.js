@@ -6,7 +6,7 @@ const anymatch = require('anymatch')
 const fs = require('fs')
 const path = require('path')
 const EventEmitter = require('events')
-const dpackapi = require('@dpack/api')
+const dwebapi = require('@dpack/api')
 const settingsDb = require('../ddbs/settings')
 const {isFileNameBinary, isFileContentBinary} = require('../lib/mime')
 const scopedFSes = require('../lib/scoped-fses')
@@ -84,11 +84,11 @@ exports.configureFolderToVaultWatcher = async function (vault) {
     var scopedFS = scopedFSes.get(vault.localSyncPath)
     vault.stopWatchingLocalFolder = scopedFS.watch('/', path => {
       // TODO
-      // it would be possible to make this more efficient by ignoring changes that match .dpackignore
-      // but you need to make sure you have the latest .dpackignore and reading that on every change-event isnt efficient
+      // it would be possible to make this more efficient by ignoring changes that match .dwebignore
+      // but you need to make sure you have the latest .dwebignore and reading that on every change-event isnt efficient
       // so you either need to:
-      //  A. queue up all the changed paths, then read the dpackignore inside the timeout and filter, if filteredList.length === 0 then abort
-      //  B. maintain an in-memory copy of the dpackignore and keep it up-to-date, and then check at time of the event
+      //  A. queue up all the changed paths, then read the dwebignore inside the timeout and filter, if filteredList.length === 0 then abort
+      //  B. maintain an in-memory copy of the dwebignore and keep it up-to-date, and then check at time of the event
       // -prf
 
       console.log('changed detected', path)
@@ -142,7 +142,7 @@ exports.diffListing = async function (vault, opts = {}) {
   if (opts.paths) {
     opts.filter = makeDiffFilterByPaths(opts.paths)
   } else {
-    const ignoreRules = await readDPackIgnore(scopedFS)
+    const ignoreRules = await readDWebIgnore(scopedFS)
     opts.filter = (filepath) => anymatch(ignoreRules, filepath)
   }
 
@@ -210,12 +210,12 @@ exports.assertSafePath = async function (p) {
   }
 }
 
-// read a dpackignore from a fs space and turn it into anymatch rules
-const readDPackIgnore = exports.readDPackIgnore = async function (fs) {
-  var rulesRaw = await readFile(fs, '.dpackignore')
+// read a dwebignore from a fs space and turn it into anymatch rules
+const readDWebIgnore = exports.readDWebIgnore = async function (fs) {
+  var rulesRaw = await readFile(fs, '.dwebignore')
   if (!rulesRaw) {
-    // TODO remove this? we're supposed to only use .dpackignore but many vaults wont have one at first -prf
-    rulesRaw = await settingsDb.get('default_dpack_ignore')
+    // TODO remove this? we're supposed to only use .dwebignore but many vaults wont have one at first -prf
+    rulesRaw = await settingsDb.get('default_dweb_ignore')
   }
   return rulesRaw.split('\n')
     .filter(Boolean)
@@ -225,21 +225,21 @@ const readDPackIgnore = exports.readDPackIgnore = async function (fs) {
       }
       return rule
     })
-    .concat(['/.git', '/.dpack'])
+    .concat(['/.git', '/.dweb'])
     .map(path.normalize)
 }
 
-// merge the dpack.json in the folder and then merge files, with preference to folder files
+// merge the dweb.json in the folder and then merge files, with preference to folder files
 const mergeVaultAndFolder = exports.mergeVaultAndFolder = async function (vault, localSyncPath) {
   console.log('merging vault with', localSyncPath)
   const readManifest = async (fs) => {
-    try { return await dpackapi.readManifest(fs) } catch (e) { return {} }
+    try { return await dwebapi.readManifest(fs) } catch (e) { return {} }
   }
   var localFS = scopedFSes.get(localSyncPath)
   var localManifest = await readManifest(localFS)
   var vaultManifest = await readManifest(vault)
   var mergedManifest = Object.assign(vaultManifest || {}, localManifest || {})
-  await dpackapi.writeManifest(localFS, mergedManifest)
+  await dwebapi.writeManifest(localFS, mergedManifest)
   await sync(vault, false, {localSyncPath, shallow: false, addOnly: true}) // vault -> folder (add-only)
   await sync(vault, true, {localSyncPath, shallow: false}) // folder -> vault
   console.log('done merging vault with', localSyncPath)
@@ -266,7 +266,7 @@ async function sync (vault, toVault, opts = {}) {
   if (opts.paths) {
     opts.filter = makeDiffFilterByPaths(opts.paths)
   } else {
-    let ignoreRules = await readDPackIgnore(scopedFS)
+    let ignoreRules = await readDWebIgnore(scopedFS)
     opts.filter = (filepath) => anymatch(ignoreRules, filepath)
   }
 

@@ -1,6 +1,6 @@
 const errors = require('@dbrowser/errors')
 const parseDWebURL = require('@dwebs/parse')
-const dpackVaultManifest = require('../manifests/external/dpack-vault')
+const dwebVaultManifest = require('../manifests/external/dweb-vault')
 const {EventTarget, Event, fromEventStream} = require('./event-target')
 const Stat = require('./stat')
 
@@ -10,14 +10,14 @@ const NETWORK_ACT_STREAM = Symbol() // eslint-disable-line
 
 exports.setup = function (rpc) {
   // create the rpc apis
-  const dWebRPC = rpc.importAPI('dpack-vault', dpackVaultManifest, { timeout: false, errors })
+  const dWebRPC = rpc.importAPI('dweb-vault', dwebVaultManifest, { timeout: false, errors })
 
-  class DPackVault extends EventTarget {
+  class DWebVault extends EventTarget {
     constructor (url) {
       super()
       var errStack = (new Error()).stack
 
-      // simple case: new DPackVault(window.location)
+      // simple case: new DWebVault(window.location)
       if (url === window.location) {
         url = window.location.toString()
       }
@@ -38,7 +38,7 @@ exports.setup = function (rpc) {
       setHidden(this, LOAD_PROMISE, dWebRPC.loadVault(url))
 
       // resolve the URL (DNS)
-      const urlPromise = DPackVault.resolveName(url).then(url => {
+      const urlPromise = DWebVault.resolveName(url).then(url => {
         if (urlParsed.version) {
           url += `+${urlParsed.version}`
         }
@@ -55,7 +55,7 @@ exports.setup = function (rpc) {
 
     static load (url) {
       var errStack = (new Error()).stack
-      const a = new DPackVault(url)
+      const a = new DWebVault(url)
       return Promise.all([a[LOAD_PROMISE], a[URL_PROMISE]])
         .then(() => a)
         .catch(e => throwWithFixedStack(e, errStack))
@@ -64,7 +64,7 @@ exports.setup = function (rpc) {
     static create (opts = {}) {
       var errStack = (new Error()).stack
       return dWebRPC.createVault(opts)
-        .then(newUrl => new DPackVault(newUrl))
+        .then(newUrl => new DWebVault(newUrl))
         .catch(e => throwWithFixedStack(e, errStack))
     }
 
@@ -75,7 +75,7 @@ exports.setup = function (rpc) {
         throwWithFixedStack(new Error('Invalid URL: must be a dweb:// URL'), errStack)
       }
       return dWebRPC.forkVault(url, opts)
-        .then(newUrl => new DPackVault(newUrl))
+        .then(newUrl => new DWebVault(newUrl))
         .catch(e => throwWithFixedStack(e, errStack))
     }
 
@@ -120,24 +120,24 @@ exports.setup = function (rpc) {
     checkout (version) {
       const urlParsed = parseDWebURL(this.url)
       version = typeof version === 'number' ? `+${version}` : ''
-      return new DPackVault(`dweb://${urlParsed.hostname}${version}`)
+      return new DWebVault(`dweb://${urlParsed.hostname}${version}`)
     }
 
     async diff (opts = {}) {
       // noop
-      console.warn('The DPackVault diff() API has been deprecated.')
+      console.warn('The DWebVault diff() API has been deprecated.')
       return []
     }
 
     async commit (opts = {}) {
       // noop
-      console.warn('The DPackVault commit() API has been deprecated.')
+      console.warn('The DWebVault commit() API has been deprecated.')
       return []
     }
 
     async revert (opts = {}) {
       // noop
-      console.warn('The DPackVault revert() API has been deprecated.')
+      console.warn('The DWebVault revert() API has been deprecated.')
       return []
     }
 
@@ -256,7 +256,7 @@ exports.setup = function (rpc) {
     }
 
     createFileActivityStream (pathSpec = null) {
-      console.warn('The DPackVault createFileActivityStream() API has been deprecated, use watch() instead.')
+      console.warn('The DWebVault createFileActivityStream() API has been deprecated, use watch() instead.')
       return this.watch(pathSpec)
     }
 
@@ -270,7 +270,7 @@ exports.setup = function (rpc) {
     }
 
     createNetworkActivityStream () {
-      console.warn('The DPackVault createNetworkActivityStream() API has been deprecated, use addEventListener() instead.')
+      console.warn('The DWebVault createNetworkActivityStream() API has been deprecated, use addEventListener() instead.')
       var errStack = (new Error()).stack
       try {
         return fromEventStream(dWebRPC.createNetworkActivityStream(this.url))
@@ -282,7 +282,7 @@ exports.setup = function (rpc) {
     static async resolveName (name) {
       var errStack = (new Error()).stack
       try {
-        // simple case: DPackVault.resolveName(window.location)
+        // simple case: DWebVault.resolveName(window.location)
         if (name === window.location) {
           name = window.location.toString()
         }
@@ -295,14 +295,14 @@ exports.setup = function (rpc) {
     static selectVault (opts = {}) {
       var errStack = (new Error()).stack
       return dWebRPC.selectVault(opts)
-        .then(url => new DPackVault(url))
+        .then(url => new DWebVault(url))
         .catch(e => throwWithFixedStack(e, errStack))
     }
   }
 
   // add internal methods
   if (window.location.protocol === 'bench:') {
-    DPackVault.importFromFilesystem = async function (opts = {}) {
+    DWebVault.importFromFilesystem = async function (opts = {}) {
       var errStack = (new Error()).stack
       try {
         return await dWebRPC.importFromFilesystem(opts)
@@ -311,7 +311,7 @@ exports.setup = function (rpc) {
       }
     }
 
-    DPackVault.exportToFilesystem = async function (opts = {}) {
+    DWebVault.exportToFilesystem = async function (opts = {}) {
       var errStack = (new Error()).stack
       try {
         return await dWebRPC.exportToFilesystem(opts)
@@ -320,7 +320,7 @@ exports.setup = function (rpc) {
       }
     }
 
-    DPackVault.exportToVault = async function (opts = {}) {
+    DWebVault.exportToVault = async function (opts = {}) {
       var errStack = (new Error()).stack
       try {
         return await dWebRPC.exportToVault(opts)
@@ -329,7 +329,7 @@ exports.setup = function (rpc) {
       }
     }
 
-    DPackVault.diff = async function (srcUrl, dstUrl, opts = {}) {
+    DWebVault.diff = async function (srcUrl, dstUrl, opts = {}) {
       if (srcUrl && typeof srcUrl.url === 'string') srcUrl = srcUrl.url
       if (dstUrl && typeof dstUrl.url === 'string') dstUrl = dstUrl.url
       var errStack = (new Error()).stack
@@ -337,7 +337,7 @@ exports.setup = function (rpc) {
         .catch(e => throwWithFixedStack(e, errStack))
     }
 
-    DPackVault.merge = async function (srcUrl, dstUrl, opts = {}) {
+    DWebVault.merge = async function (srcUrl, dstUrl, opts = {}) {
       if (srcUrl && typeof srcUrl.url === 'string') srcUrl = srcUrl.url
       if (dstUrl && typeof dstUrl.url === 'string') dstUrl = dstUrl.url
       var errStack = (new Error()).stack
@@ -373,5 +373,5 @@ exports.setup = function (rpc) {
     s.addEventListener('sync', detail => vault.dispatchEvent(new Event('sync', {target: vault, feed: detail.feed})))
   }
 
-  return DPackVault
+  return DWebVault
 }

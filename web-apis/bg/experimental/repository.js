@@ -39,7 +39,7 @@ function add (isRequest) {
       sender: this.sender
     })
 
-    // swarm the vault
+    // flock the vault
     /* dont await */ dWebRepository.getOrLoadVault(key)
 
     // update settings

@@ -1,10 +1,10 @@
 const vaultsDb = require('../ddbs/vaults')
 const {unloadVault} = require('./repository')
 const {
-  DPACK_GC_FIRST_COLLECT_WAIT,
-  DPACK_GC_REGULAR_COLLECT_WAIT
+  DWEB_GC_FIRST_COLLECT_WAIT,
+  DWEB_GC_REGULAR_COLLECT_WAIT
 } = require('../lib/const')
-const debug = require('debug')('dpackgc')
+const debug = require('debug')('dwebgc')
 
 // globals
 // =
@@ -15,7 +15,7 @@ var nextGCTimeout
 // =
 
 exports.setup = function () {
-  schedule(DPACK_GC_FIRST_COLLECT_WAIT)
+  schedule(DWEB_GC_FIRST_COLLECT_WAIT)
 }
 
 const collect = exports.collect = async function ({olderThan, isOwner} = {}) {
@@ -50,7 +50,7 @@ const collect = exports.collect = async function ({olderThan, isOwner} = {}) {
   debug('GC completed in %d ms', Date.now() - startTime)
 
   // schedule the next GC
-  schedule(DPACK_GC_REGULAR_COLLECT_WAIT)
+  schedule(DWEB_GC_REGULAR_COLLECT_WAIT)
 
   // return stats
   return {totalBytes, totalVaults: unusedVaults.length - skippedVaults, skippedVaults}

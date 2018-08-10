@@ -95,7 +95,7 @@ module.exports = {
     // check for conflicts
     var vault = await dWebRepository.getOrLoadVault(key)
     var diff = await folderSync.diffListing(vault, {localSyncPath})
-    diff = diff.filter(d => d.change === 'mod' && d.path !== '/dpack.json')
+    diff = diff.filter(d => d.change === 'mod' && d.path !== '/dweb.json')
     if (diff.length) {
       return {hasConflicts: true, conflicts: diff.map(d => d.path)}
     }

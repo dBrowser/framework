@@ -20,7 +20,7 @@ const findFullRevelationKey = exports.findFullRevelationKey = function (vaultsBy
 const getDNSMessageRevelationKey = exports.getDNSMessageRevelationKey = function (vaultsByDKey, msg) {
   var key
   function check (obj) {
-    if (!key && obj.name.endsWith('.dpack.local')) {
+    if (!key && obj.name.endsWith('.dweb.local')) {
       key = findFullRevelationKey(vaultsByDKey, obj.name.slice(0, -10))
     }
   }

@@ -3,7 +3,7 @@ const emitStream = require('emit-stream')
 const EventEmitter = require('events')
 const dwebCodec = require('@dwebs/codec')
 const pify = require('pify')
-const dpackapi = require('@dpack/api')
+const dwebapi = require('@dpack/api')
 const signatures = require('sodium-signatures')
 const parseDWebURL = require('@dwebs/parse')
 const dWebStreams2 = require('@dwcore/dws2')
@@ -18,9 +18,9 @@ const settingsDb = require('../ddbs/settings')
 
 // dPack modules
 const vaultsDb = require('../ddbs/vaults')
-const dpackGC = require('./garbage-collector')
+const dwebGC = require('./garbage-collector')
 const folderSync = require('./folder-sync')
-const {addVaultSwarmLogging} = require('./logging-utils')
+const {addVaultFlockLogging} = require('./logging-utils')
 const ddatabaseProtocol = require('@ddatabase/protocol')
 const ddrive = require('@ddrive/core')
 
@@ -37,7 +37,7 @@ const mkdirp = require('mkdirp')
 const {
   DWEB_HASH_REGEX,
   DWEB_FLOCK_PORT,
-  DPACK_PRESERVED_FIELDS_ON_FORK
+  DWEB_PRESERVED_FIELDS_ON_FORK
 } = require('../lib/const')
 const {InvalidURLError} = require('@dbrowser/errors')
 
@@ -51,7 +51,7 @@ var vaultLoadPromises = {} // key -> promise
 var vaultsEvents = new EventEmitter()
 var debugEvents = new EventEmitter()
 var debugLogFile
-var vaultSwarm
+var vaultFlock
 
 // exported API
 // =
@@ -76,7 +76,7 @@ exports.setup = function setup ({logfilePath}) {
 
     // delete all perms for deleted vaults
     if (!userSettings.isSaved) {
-      siteData.clearPermissionAllOrigins('modifyDPack:' + key)
+      siteData.clearPermissionAllOrigins('modifyDWeb:' + key)
     }
 
     // update the download based on these settings
@@ -105,9 +105,9 @@ exports.setup = function setup ({logfilePath}) {
     })
   })
 
-  // setup the vault swarm
-  dpackGC.setup()
-  vaultSwarm = flockRevelation(flockPresets({
+  // setup the vault flock
+  dwebGC.setup()
+  vaultFlock = flockRevelation(flockPresets({
     id: networkId,
     hash: false,
     utp: true,
@@ -115,9 +115,9 @@ exports.setup = function setup ({logfilePath}) {
     dht: false,
     stream: createReplicationStream
   }))
-  addVaultSwarmLogging({vaultsByDKey, log, vaultSwarm})
-  vaultSwarm.once('error', () => vaultSwarm.listen(0))
-  vaultSwarm.listen(DWEB_FLOCK_PORT)
+  addVaultFlockLogging({vaultsByDKey, log, vaultFlock})
+  vaultFlock.once('error', () => vaultFlock.listen(0))
+  vaultFlock.listen(DWEB_FLOCK_PORT)
 
   // load and configure all saved vaults
   vaultsDb.query(0, {isSaved: true}).then(
@@ -160,7 +160,7 @@ const pullLatestVaultMeta = exports.pullLatestVaultMeta = async function pullLat
 
     // read the vault meta and size on disk
     var [manifest, oldMeta] = await Promise.all([
-      dpackapi.readManifest(vault).catch(_ => {}),
+      dwebapi.readManifest(vault).catch(_ => {}),
       vaultsDb.getMeta(key),
       updateSizeTracking(vault)
     ])
@@ -197,10 +197,10 @@ const createNewVault = exports.createNewVault = async function createNewVault (m
   var vault = await loadVault(null, userSettings)
   var key = dwebCodec.toStr(vault.key)
 
-  // write the manifest and default dpackignore
+  // write the manifest and default dwebignore
   await Promise.all([
-    dpackapi.writeManifest(vault, manifest),
-    dpackapi.writeFile(vault, '/.dpackignore', await settingsDb.get('default_dpack_ignore'), 'utf8')
+    dwebapi.writeManifest(vault, manifest),
+    dwebapi.writeFile(vault, '/.dwebignore', await settingsDb.get('default_dweb_ignore'), 'utf8')
   ])
 
   // write the user settings
@@ -222,7 +222,7 @@ exports.forkVault = async function forkVault (srcVaultUrl, manifest = {}, settin
   }
 
   // fetch old vault meta
-  var srcManifest = await dpackapi.readManifest(srcVault).catch(_ => {})
+  var srcManifest = await dwebapi.readManifest(srcVault).catch(_ => {})
   srcManifest = srcManifest || {}
 
   // override any manifest data
@@ -232,7 +232,7 @@ exports.forkVault = async function forkVault (srcVaultUrl, manifest = {}, settin
     type: (manifest.type) ? manifest.type : srcManifest.type,
     author: manifest.author
   }
-  DPACK_PRESERVED_FIELDS_ON_FORK.forEach(field => {
+  DWEB_PRESERVED_FIELDS_ON_FORK.forEach(field => {
     if (srcManifest[field]) {
       dstManifest[field] = srcManifest[field]
     }
@@ -243,19 +243,19 @@ exports.forkVault = async function forkVault (srcVaultUrl, manifest = {}, settin
   var dstVault = getVault(dstVaultUrl)
 
   // copy files
-  var ignore = ['/.dpack', '/.git', '/dpack.json']
-  await dpackapi.exportVaultToVault({
+  var ignore = ['/.dweb', '/.git', '/dweb.json']
+  await dwebapi.exportVaultToVault({
     srcVault,
     dstVault,
     skipUndownloadedFiles: true,
     ignore
   })
 
-  // write a .dpackignore if DNE
+  // write a .dwebignore if DNE
   try {
-    await dpackapi.stat(dstVault, '/.dpackignore')
+    await dwebapi.stat(dstVault, '/.dwebignore')
   } catch (e) {
-    await dpackapi.writeFile(dstVault, '/.dpackignore', await settingsDb.get('default_dpack_ignore'), 'utf8')
+    await dwebapi.writeFile(dstVault, '/.dwebignore', await settingsDb.get('default_dweb_ignore'), 'utf8')
   }
 
   return dstVaultUrl
@@ -378,7 +378,7 @@ async function loadVaultInner (key, secretKey, userSettings = null) {
   // wire up events
   vault.pullLatestVaultMeta = debounce(opts => pullLatestVaultMeta(vault, opts), 1e3)
   vault.syncVaultToFolder = debounce((opts) => folderSync.syncVaultToFolder(vault, opts), 1e3)
-  vault.fileActStream = dpackapi.watch(vault)
+  vault.fileActStream = dwebapi.watch(vault)
   vault.fileActStream.on('data', ([event, data]) => {
     if (event === 'changed') {
       vault.pullLatestVaultMeta({updateMTime: true})
@@ -422,7 +422,7 @@ exports.unloadVault = async function unloadVault (key) {
   }
 
   // shutdown vault
-  leaveSwarm(key)
+  leaveFlock(key)
   stopAutodownload(vault)
   if (vault.fileActStream) {
     vault.fileActStream.end()
@@ -445,7 +445,7 @@ const isVaultLoaded = exports.isVaultLoaded = function isVaultLoaded (key) {
 
 const updateSizeTracking = exports.updateSizeTracking = async function updateSizeTracking (vault) {
   // fetch size
-  vault.size = await dpackapi.readSize(vault, '/')
+  vault.size = await dwebapi.readSize(vault, '/')
 }
 
 // vault fetch/query
@@ -532,40 +532,40 @@ exports.clearFileCache = async function clearFileCache (key) {
 // set the networking of an vault based on settings
 function configureNetwork (vault, settings) {
   if (!settings || settings.networked) {
-    joinSwarm(vault)
+    joinFlock(vault)
   } else {
-    leaveSwarm(vault)
+    leaveFlock(vault)
   }
 }
 
 // put the vault into the network, for upload and download
-const joinSwarm = exports.joinSwarm = function joinSwarm (key, opts) {
+const joinFlock = exports.joinFlock = function joinFlock (key, opts) {
   var vault = (typeof key === 'object' && key.key) ? key : getVault(key)
-  if (!vault || vault.isSwarming) return
-  vaultSwarm.join(vault.revelationKey)
+  if (!vault || vault.isFlocking) return
+  vaultFlock.join(vault.revelationKey)
   var keyStr = dwebCodec.toStr(vault.key)
   log(keyStr, {
-    event: 'swarming',
+    event: 'flocking',
     revelationKey: dwebCodec.toStr(vault.revelationKey)
   })
-  vault.isSwarming = true
+  vault.isFlocking = true
 }
 
 // take the vault out of the network
-const leaveSwarm = exports.leaveSwarm = function leaveSwarm (key) {
+const leaveFlock = exports.leaveFlock = function leaveFlock (key) {
   var vault = (typeof key === 'object' && key.revelationKey) ? key : getVault(key)
-  if (!vault || !vault.isSwarming) return
+  if (!vault || !vault.isFlocking) return
 
   var keyStr = dwebCodec.toStr(vault.key)
   log(keyStr, {
-    event: 'unswarming',
+    event: 'unflocking',
     message: `Disconnected ${vault.metadata.peers.length} peers`
   })
 
   vault.replicationStreams.forEach(stream => stream.destroy()) // stop all active replications
   vault.replicationStreams.length = 0
-  vaultSwarm.leave(vault.revelationKey)
-  vault.isSwarming = false
+  vaultFlock.leave(vault.revelationKey)
+  vault.isFlocking = false
 }
 
 // helpers
@@ -627,11 +627,11 @@ function configureAutoDownload (vault, userSettings) {
       onUpdate: throttle(() => {
         // cancel ALL previous, then prioritize ALL current
         vault._autodownloader.undownloadAll()
-        dpackapi.download(vault, '/').catch(e => { /* ignore cancels */ })
+        dwebapi.download(vault, '/').catch(e => { /* ignore cancels */ })
       }, 5e3)
     }
     vault.metadata.on('download', vault._autodownloader.onUpdate)
-    dpackapi.download(vault, '/').catch(e => { /* ignore cancels */ })
+    dwebapi.download(vault, '/').catch(e => { /* ignore cancels */ })
   } else if (vault._autodownloader && !isAutoDownloading) {
     stopAutodownload(vault)
   }
@@ -677,7 +677,7 @@ function createReplicationStream (info) {
     // lookup the vault
     var dkeyStr = dwebCodec.toStr(dkey)
     var vault = vaultsByDKey[dkeyStr]
-    if (!vault || !vault.isSwarming) {
+    if (!vault || !vault.isFlocking) {
       return
     }
     if (vault.replicationStreams.indexOf(stream) !== -1) {

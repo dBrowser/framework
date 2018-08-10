@@ -25,7 +25,7 @@ exports.setup = function (opts) {
     custom_start_page: 'blank',
     start_page_background_image: '',
     workspace_default_path: path.join(opts.homePath, 'Sites'),
-    default_dpack_ignore: '.git\n.dpack\nnode_modules\n*.log\n**/.DS_Store\nThumbs.db\n',
+    default_dweb_ignore: '.git\n.dweb\nnode_modules\n*.log\n**/.DS_Store\nThumbs.db\n',
     analytics_enabled: 0
   }
 }

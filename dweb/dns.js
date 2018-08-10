@@ -20,11 +20,11 @@ dwebDns.resolveName = function () {
 // persistent cache methods
 const sitedataDbOpts = {dontExtractOrigin: true}
 async function read (name, err) {
-  var key = await sitedataDb.get('dweb:' + name, 'dpack-key', sitedataDbOpts)
+  var key = await sitedataDb.get('dweb:' + name, 'dweb-key', sitedataDbOpts)
   if (!key) throw err
   return key
 }
 async function write (name, key) {
   if (DWEB_HASH_REGEX.test(name)) return // dont write for raw urls
-  await sitedataDb.set('dweb:' + name, 'dpack-key', key, sitedataDbOpts)
+  await sitedataDb.set('dweb:' + name, 'dweb-key', key, sitedataDbOpts)
 }

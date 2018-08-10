@@ -2,7 +2,7 @@ const globals = require('../../globals')
 const path = require('path')
 const fs = require('fs')
 const parseDWebURL = require('@dwebs/parse')
-const dpackapi = require('@dpack/api')
+const dwebapi = require('@dpack/api')
 const concat = require('@dwcore/dws-chain')
 const pick = require('lodash.pick')
 const dwebDns = require('../../dweb/dns')
@@ -10,12 +10,12 @@ const dWebRepository = require('../../dweb/repository')
 const vaultsDb = require('../../ddbs/vaults')
 const {timer} = require('../../lib/time')
 const {
-  DPACK_MANIFEST_FILENAME,
-  DPACK_CONFIGURABLE_FIELDS,
+  DWEB_MANIFEST_FILENAME,
+  DWEB_CONFIGURABLE_FIELDS,
   DWEB_HASH_REGEX,
-  DPACK_QUOTA_DEFAULT_BYTES_ALLOWED,
+  DWEB_QUOTA_DEFAULT_BYTES_ALLOWED,
   DWEB_VALID_PATH_REGEX,
-  DEFAULT_DPACK_API_TIMEOUT
+  DEFAULT_DWEB_API_TIMEOUT
 } = require('../../lib/const')
 const {
   PermissionsError,
@@ -33,7 +33,7 @@ const {
 const to = (opts) =>
   (opts && typeof opts.timeout !== 'undefined')
     ? opts.timeout
-    : DEFAULT_DPACK_API_TIMEOUT
+    : DEFAULT_DWEB_API_TIMEOUT
 
 module.exports = {
   async createVault ({title, description, type, networked, links, template, prompt} = {}) {
@@ -64,14 +64,14 @@ module.exports = {
       let author = await getAuthor()
       newVaultUrl = await dWebRepository.createNewVault({title, description, type, author, links}, {networked})
     }
-    let newVaultKey = await lookupUrlDPackKey(newVaultUrl)
+    let newVaultKey = await lookupUrlDWebKey(newVaultUrl)
 
     // apply the template
     if (template) {
       try {
         let vault = dWebRepository.getVault(newVaultKey)
         let templatePath = path.join(__dirname, 'assets', 'templates', template)
-        await dpackapi.exportFilesystemToVault({
+        await dwebapi.exportFilesystemToVault({
           srcPath: templatePath,
           dstVault: vault,
           dstPath: '/',
@@ -83,7 +83,7 @@ module.exports = {
     }
 
     // grant write permissions to the creating app
-    globals.permsAPI.grantPermission('modifyDPack:' + newVaultKey, this.sender.getURL())
+    globals.permsAPI.grantPermission('modifyDWeb:' + newVaultKey, this.sender.getURL())
     return newVaultUrl
   },
 
@@ -97,8 +97,8 @@ module.exports = {
 
     if (prompt !== false) {
       // run the fork modal
-      let key1 = await lookupUrlDPackKey(url)
-      let key2 = await lookupUrlDPackKey(this.sender.getURL())
+      let key1 = await lookupUrlDWebKey(url)
+      let key2 = await lookupUrlDWebKey(this.sender.getURL())
       let isSelfFork = key1 === key2
       let res
       try {
@@ -120,8 +120,8 @@ module.exports = {
     }
 
     // grant write permissions to the creating app
-    let newVaultKey = await lookupUrlDPackKey(newVaultUrl)
-    globals.permsAPI.grantPermission('modifyDPack:' + newVaultKey, this.sender.getURL())
+    let newVaultKey = await lookupUrlDWebKey(newVaultUrl)
+    globals.permsAPI.grantPermission('modifyDWeb:' + newVaultKey, this.sender.getURL())
     return newVaultUrl
   },
 
@@ -201,7 +201,7 @@ module.exports = {
       }
 
       // manifest updates
-      let manifestUpdates = pick(settings, DPACK_CONFIGURABLE_FIELDS)
+      let manifestUpdates = pick(settings, DWEB_CONFIGURABLE_FIELDS)
       if (Object.keys(manifestUpdates).length === 0) {
         // no manifest updates
         return
@@ -214,7 +214,7 @@ module.exports = {
       resume()
 
       checkin('updating vault')
-      await dpackapi.updateManifest(vault, manifestUpdates)
+      await dwebapi.updateManifest(vault, manifestUpdates)
       await dWebRepository.pullLatestVaultMeta(vault)
     })
   },
@@ -260,7 +260,7 @@ module.exports = {
       checkin('looking up vault')
       const {checkoutFS} = await lookupVault(url, opts)
       checkin('stating file')
-      return dpackapi.stat(checkoutFS, filepath)
+      return dwebapi.stat(checkoutFS, filepath)
     })
   },
 
@@ -270,7 +270,7 @@ module.exports = {
       checkin('looking up vault')
       const {checkoutFS} = await lookupVault(url, opts)
       checkin('reading file')
-      return dpackapi.readFile(checkoutFS, filepath, opts)
+      return dwebapi.readFile(checkoutFS, filepath, opts)
     })
   },
 
@@ -291,7 +291,7 @@ module.exports = {
       resume()
 
       checkin('writing file')
-      return dpackapi.writeFile(vault, filepath, data, opts)
+      return dwebapi.writeFile(vault, filepath, data, opts)
     })
   },
 
@@ -308,7 +308,7 @@ module.exports = {
       resume()
 
       checkin('deleting file')
-      return dpackapi.unlink(vault, filepath)
+      return dwebapi.unlink(vault, filepath)
     })
   },
 
@@ -322,12 +322,12 @@ module.exports = {
       const senderOrigin = vaultsDb.extractOrigin(this.sender.getURL())
       await assertWritePermission(vault, this.sender)
       assertUnprotectedFilePath(dstpath, this.sender)
-      const sourceSize = await dpackapi.readSize(vault, filepath)
+      const sourceSize = await dwebapi.readSize(vault, filepath)
       await assertQuotaPermission(vault, senderOrigin, sourceSize)
       resume()
 
       checkin('copying file')
-      return dpackapi.copy(vault, filepath, dstpath)
+      return dwebapi.copy(vault, filepath, dstpath)
     })
   },
 
@@ -345,7 +345,7 @@ module.exports = {
       resume()
 
       checkin('renaming file')
-      return dpackapi.rename(vault, filepath, dstpath)
+      return dwebapi.rename(vault, filepath, dstpath)
     })
   },
 
@@ -360,7 +360,7 @@ module.exports = {
       }
 
       checkin('downloading file')
-      return dpackapi.download(vault, filepath)
+      return dwebapi.download(vault, filepath)
     })
   },
 
@@ -371,12 +371,12 @@ module.exports = {
       const {checkoutFS} = await lookupVault(url, opts)
 
       checkin('reading directory')
-      var names = await dpackapi.readdir(checkoutFS, filepath, opts)
+      var names = await dwebapi.readdir(checkoutFS, filepath, opts)
       if (opts.stat) {
         for (let i = 0; i < names.length; i++) {
           names[i] = {
             name: names[i],
-            stat: await dpackapi.stat(checkoutFS, path.join(filepath, names[i]))
+            stat: await dwebapi.stat(checkoutFS, path.join(filepath, names[i]))
           }
         }
       }
@@ -398,7 +398,7 @@ module.exports = {
       resume()
 
       checkin('making directory')
-      return dpackapi.mkdir(vault, filepath)
+      return dwebapi.mkdir(vault, filepath)
     })
   },
 
@@ -415,18 +415,18 @@ module.exports = {
       resume()
 
       checkin('removing directory')
-      return dpackapi.rmdir(vault, filepath, opts)
+      return dwebapi.rmdir(vault, filepath, opts)
     })
   },
 
   async watch (url, pathPattern) {
     var {vault} = await lookupVault(url)
-    return dpackapi.watch(vault, pathPattern)
+    return dwebapi.watch(vault, pathPattern)
   },
 
   async createNetworkActivityStream (url) {
     var {vault} = await lookupVault(url)
-    return dpackapi.createNetworkActivityStream(vault)
+    return dwebapi.createNetworkActivityStream(vault)
   },
 
   async resolveName (name) {
@@ -457,7 +457,7 @@ module.exports = {
       throw new InvalidURLError('The second parameter of diff() must be a dWeb URL')
     }
     var [src, dst] = await Promise.all([lookupVault(srcUrl), lookupVault(dstUrl)])
-    return dpackapi.diff(src.vault, src.filepath, dst.vault, dst.filepath, opts)
+    return dwebapi.diff(src.vault, src.filepath, dst.vault, dst.filepath, opts)
   },
 
   async merge (srcUrl, dstUrl, opts) {
@@ -471,14 +471,14 @@ module.exports = {
     var [src, dst] = await Promise.all([lookupVault(srcUrl), lookupVault(dstUrl)])
     if (!dst.vault.writable) throw new VaultNotWritableError('The destination vault is not writable')
     if (dst.version) throw new VaultNotWritableError('Cannot modify a historic version')
-    return dpackapi.merge(src.vault, src.filepath, dst.vault, dst.filepath, opts)
+    return dwebapi.merge(src.vault, src.filepath, dst.vault, dst.filepath, opts)
   },
 
   async importFromFilesystem (opts) {
     assertTmpDBrowserOnly(this.sender)
     var {vault, filepath, version} = await lookupVault(opts.dst, opts)
     if (version) throw new VaultNotWritableError('Cannot modify a historic version')
-    return dpackapi.exportFilesystemToVault({
+    return dwebapi.exportFilesystemToVault({
       srcPath: opts.src,
       dstVault: vault,
       dstPath: filepath,
@@ -496,7 +496,7 @@ module.exports = {
     // }
 
     var {checkoutFS, filepath} = await lookupVault(opts.src, opts)
-    return dpackapi.exportVaultToFilesystem({
+    return dwebapi.exportVaultToFilesystem({
       srcVault: checkoutFS,
       srcPath: filepath,
       dstPath: opts.dst,
@@ -511,7 +511,7 @@ module.exports = {
     var src = await lookupVault(opts.src, opts)
     var dst = await lookupVault(opts.dst, opts)
     if (dst.version) throw new VaultNotWritableError('Cannot modify a historic version')
-    return dpackapi.exportVaultToVault({
+    return dwebapi.exportVaultToVault({
       srcVault: src.checkoutFS,
       srcPath: src.filepath,
       dstVault: dst.vault,
@@ -530,7 +530,7 @@ function assertUnprotectedFilePath (filepath, sender) {
   if (sender.getURL().startsWith('bench:')) {
     return // can write any file
   }
-  if (filepath === '/' + DPACK_MANIFEST_FILENAME) {
+  if (filepath === '/' + DWEB_MANIFEST_FILENAME) {
     throw new ProtectedFileNotWritableError()
   }
 }
@@ -549,7 +549,7 @@ async function assertCreateVaultPermission (sender) {
   }
 
   // ask the user
-  let allowed = await globals.permsAPI.requestPermission('createDPack', sender)
+  let allowed = await globals.permsAPI.requestPermission('createDWeb', sender)
   if (!allowed) {
     throw new UserDeniedError()
   }
@@ -558,7 +558,7 @@ async function assertCreateVaultPermission (sender) {
 async function assertWritePermission (vault, sender) {
   var vaultKey = vault.key.toString('hex')
   var details = await dWebRepository.getVaultInfo(vaultKey)
-  const perm = ('modifyDPack:' + vaultKey)
+  const perm = ('modifyDWeb:' + vaultKey)
 
   // ensure we have the vault's private key
   if (!vault.writable) {
@@ -576,8 +576,8 @@ async function assertWritePermission (vault, sender) {
   }
 
   // self-modification ALWAYS allowed
-  var senderDPackKey = await lookupUrlDPackKey(sender.getURL())
-  if (senderDPackKey === vaultKey) {
+  var senderDWebKey = await lookupUrlDWebKey(sender.getURL())
+  if (senderDWebKey === vaultKey) {
     return true
   }
 
@@ -593,7 +593,7 @@ async function assertWritePermission (vault, sender) {
 
 async function assertDeleteVaultPermission (vault, sender) {
   var vaultKey = vault.key.toString('hex')
-  const perm = ('deleteDPack:' + vaultKey)
+  const perm = ('deleteDWeb:' + vaultKey)
 
   // bench: always allowed
   if (sender.getURL().startsWith('bench:')) {
@@ -633,7 +633,7 @@ async function assertQuotaPermission (vault, senderOrigin, byteLength) {
   const userSettings = await vaultsDb.getUserSettings(0, vault.key)
 
   // fallback to default quota
-  var bytesAllowed = userSettings.bytesAllowed || DPACK_QUOTA_DEFAULT_BYTES_ALLOWED
+  var bytesAllowed = userSettings.bytesAllowed || DWEB_QUOTA_DEFAULT_BYTES_ALLOWED
 
   // update the vault size
   await dWebRepository.updateSizeTracking(vault)
@@ -727,7 +727,7 @@ async function lookupVault (url, opts = {}) {
   return {vault, filepath, version, checkoutFS}
 }
 
-async function lookupUrlDPackKey (url) {
+async function lookupUrlDWebKey (url) {
   if (url.startsWith('dweb://') === false) {
     return false // not a dSite
   }

@@ -3,13 +3,13 @@ const parseDWebUrl = require('@dwebs/parse')
 const parseRange = require('range-parser')
 const once = require('once')
 const debug = require('debug')('dpack-serve')
-const dPackAPI = require('@dpack/api')
+const dWebApi = require('@dpack/api')
 const intoStream = require('into-stream')
 const zipDDrive = require('@ddrive/zip')
 const slugify = require('slugify')
 
 const dwebDns = require('./dns')
-const dPackRepository = require('./repository')
+const dWebRepository = require('./repository')
 
 const directoryListingPage = require('./directory-listing-page')
 const errorPage = require('../lib/error-page')
@@ -107,7 +107,7 @@ exports.electronHandler = async function (request, respond) {
 
   try {
     // start searching the network
-    vault = await dPackRepository.getOrLoadVault(vaultKey)
+    vault = await dWebRepository.getOrLoadVault(vaultKey)
   } catch (err) {
     debug('Failed to open vault', vaultKey, err)
     cleanup()
@@ -135,7 +135,7 @@ exports.electronHandler = async function (request, respond) {
 
   // read the manifest (it's needed in a couple places)
   var manifest
-  try { manifest = await dPackAPI.readManifest(vaultFS) } catch (e) { manifest = null }
+  try { manifest = await dWebApi.readManifest(vaultFS) } catch (e) { manifest = null }
 
   // read manifest CSP
   if (manifest && manifest.content_security_policy && typeof manifest.content_security_policy === 'string') {
@@ -197,7 +197,7 @@ exports.electronHandler = async function (request, respond) {
     }
     // attempt lookup
     try {
-      entry = await dPackAPI.stat(vaultFS, path)
+      entry = await dWebApi.stat(vaultFS, path)
       entry.path = path
     } catch (e) {}
   }

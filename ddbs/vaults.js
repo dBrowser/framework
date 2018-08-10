@@ -9,13 +9,13 @@ const db = require('./profile-data-db')
 const lock = require('../lib/lock')
 const {
   DWEB_HASH_REGEX,
-  DPACK_GC_EXPIRATION_AGE
+  DWEB_GC_EXPIRATION_AGE
 } = require('../lib/const')
 
 // globals
 // =
 
-var dpackPath // path to the dPack folder
+var dwebPath // path to the dPack folder
 var events = new Events()
 
 // exported methods
@@ -23,14 +23,14 @@ var events = new Events()
 
 exports.setup = function (opts) {
   // make sure the folders exist
-  dpackPath = path.join(opts.userDataPath, 'DPack')
-  mkdirp.sync(path.join(dpackPath, 'Vaults'))
+  dwebPath = path.join(opts.userDataPath, 'DWeb')
+  mkdirp.sync(path.join(dwebPath, 'Vaults'))
 }
 
 // get the path to an vault's files
 const getVaultMetaPath = exports.getVaultMetaPath = function (vaultOrKey) {
   var key = dwebCodec.toStr(vaultOrKey.key || vaultOrKey)
-  return path.join(dpackPath, 'Vaults', 'Meta', key.slice(0, 2), key.slice(2))
+  return path.join(dwebPath, 'Vaults', 'Meta', key.slice(0, 2), key.slice(2))
 }
 
 // delete all db entries and files for an vault
@@ -149,7 +149,7 @@ exports.listExpiredVaults = async function () {
 
 // get all vaults that are ready for garbage collection
 exports.listGarbageCollectableVaults = async function ({olderThan, isOwner} = {}) {
-  olderThan = typeof olderThan === 'number' ? olderThan : DPACK_GC_EXPIRATION_AGE
+  olderThan = typeof olderThan === 'number' ? olderThan : DWEB_GC_EXPIRATION_AGE
   isOwner = typeof isOwner === 'boolean' ? `AND vaults_meta.isOwner = ${isOwner ? '1' : '0'}` : ''
   return db.all(`
     SELECT vaults_meta.key

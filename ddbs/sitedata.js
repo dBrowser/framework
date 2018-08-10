@@ -4,7 +4,7 @@ const url = require('url')
 const { cbPromise } = require('../lib/functions')
 const { setupSqliteDB } = require('../lib/db')
 const dwebDns = require('../dweb/dns')
-const dPackRepository = require('../dweb/repository')
+const dWebRepository = require('../dweb/repository')
 
 // globals
 // =
